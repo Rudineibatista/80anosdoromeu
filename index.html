@@ -967,7 +967,7 @@
         <button
             class="nav-link nav-load"
             onclick="openFolderPicker()">
-            Baixar fotos
+            Carregar fotos
         </button>
 
     </div>
@@ -1151,7 +1151,7 @@
         <h2>Nenhuma foto carregada</h2>
 
         <p>
-            Clique em "Baixar fotos" e selecione a pasta
+            Clique em "Carregar fotos" e selecione a pasta
             onde estão as imagens do aniversário.
         </p>
 
@@ -1239,20 +1239,53 @@
     */
 
 
-    let photos = [
-        {
-            id: 0,
-            file: null,
-            name: "IMG_20260927_105603.jpg",
-            url: "IMG_20260927_105603.jpg"
-        },
-        {
-            id: 1,
-            file: null,
-            name: "IMG_20260927_110943.jpg",
-            url: "IMG_20260927_110943.jpg"
-        }
+    const initialPhotoNames = [
+        "IMG_20260927_105603.jpg",
+        "IMG_20260927_110015.jpg",
+        "IMG_20260927_110038_1.jpg",
+        "IMG_20260927_110413.jpg",
+        "IMG_20260927_110427.jpg",
+        "IMG_20260927_110442.jpg",
+        "IMG_20260927_110454.jpg",
+        "IMG_20260927_110517.jpg",
+        "IMG_20260927_110543.jpg",
+        "IMG_20260927_110645.jpg",
+        "IMG_20260927_110715.jpg",
+        "IMG_20260927_110731.jpg",
+        "IMG_20260927_110744.jpg",
+        "IMG_20260927_110941.jpg",
+        "IMG_20260927_110943.jpg",
+        "IMG_20260927_112553.jpg",
+        "IMG_20260927_121227.jpg",
+        "IMG_20260927_121314.jpg",
+        "IMG_20260927_121341.jpg",
+        "IMG_20260927_121406.jpg",
+        "IMG_20260927_121415.jpg",
+        "IMG_20260927_121501.jpg",
+        "IMG_20260927_121510.jpg",
+        "IMG_20260927_121620.jpg",
+        "IMG_20260927_121639.jpg",
+        "IMG_20260927_121641.jpg",
+        "IMG_20260927_121646_1(1).jpg",
+        "IMG_20260927_121646_1.jpg",
+        "IMG_20260927_121709.jpg",
+        "IMG_20260927_121849.jpg",
+        "IMG_20260927_121927_1.jpg",
+        "IMG_20260927_121939.jpg",
+        "IMG_20260927_122007.jpg",
+        "IMG_20260927_122315.jpg",
+        "IMG_20260927_122319.jpg"
     ];
+
+    let photos =
+        initialPhotoNames.map(
+            (name, id) => ({
+                id,
+                file: null,
+                name,
+                url: name
+            })
+        );
 
     let currentSlide = 0;
 
