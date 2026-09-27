@@ -967,7 +967,7 @@
         <button
             class="nav-link nav-load"
             onclick="openFolderPicker()">
-            Carregar fotos
+            Baixar fotos
         </button>
 
     </div>
@@ -983,7 +983,7 @@
     webkitdirectory
     directory
     multiple
-    accept="image/jpeg,image/png,image/webp"
+    accept="image/*"
     style="display:none;">
 
 
@@ -1151,7 +1151,7 @@
         <h2>Nenhuma foto carregada</h2>
 
         <p>
-            Clique em "Carregar fotos" e selecione a pasta
+            Clique em "Baixar fotos" e selecione a pasta
             onde estão as imagens do aniversário.
         </p>
 
@@ -1239,7 +1239,20 @@
     */
 
 
-    let photos = [];
+    let photos = [
+        {
+            id: 0,
+            file: null,
+            name: "IMG_20260927_105603.jpg",
+            url: "IMG_20260927_105603.jpg"
+        },
+        {
+            id: 1,
+            file: null,
+            name: "IMG_20260927_110943.jpg",
+            url: "IMG_20260927_110943.jpg"
+        }
+    ];
 
     let currentSlide = 0;
 
@@ -1320,10 +1333,17 @@
                     const type =
                         file.type.toLowerCase();
 
+                    const isAtRoot =
+                        !file.webkitRelativePath ||
+                        file.webkitRelativePath.split("/").length === 2;
+
+                    const hasImageExtension =
+                        /\.(avif|bmp|gif|heic|heif|ico|jpe?g|png|svg|tiff?|webp)$/i
+                            .test(file.name);
+
                     return (
-                        type === "image/jpeg" ||
-                        type === "image/png" ||
-                        type === "image/webp"
+                        isAtRoot &&
+                        (type.startsWith("image/") || hasImageExtension)
                     );
 
                 });
@@ -1937,17 +1957,42 @@
                         )
                 );
 
+            if (
+                location.protocol === "file:" &&
+                selected.some(photo => !photo.file)
+            ) {
 
-            selected.forEach(
-                photo => {
+                selected.forEach(downloadPhoto);
 
-                    zip.file(
-                        photo.name,
-                        photo.file
-                    );
+                showToast(
+                    "Downloads das fotos iniciados individualmente."
+                );
 
-                }
-            );
+                return;
+
+            }
+
+
+            for (const photo of selected) {
+
+                const fileContent =
+                    photo.file ||
+                    await fetch(photo.url).then(response => {
+
+                        if (!response.ok) {
+                            throw new Error(`Falha ao carregar ${photo.name}`);
+                        }
+
+                        return response.blob();
+
+                    });
+
+                zip.file(
+                    photo.name,
+                    fileContent
+                );
+
+            }
 
 
             const blob =
@@ -2405,9 +2450,7 @@
 
     function initialize() {
 
-        updateCounters();
-
-        renderGrid();
+        renderEverything();
 
     }
 
