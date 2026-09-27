@@ -1234,43 +1234,11 @@
     */
 
 
-    const initialPhotoNames = [
-        "IMG_20260927_105603.jpg",
-        "IMG_20260927_110015.jpg",
-        "IMG_20260927_110038_1.jpg",
-        "IMG_20260927_110413.jpg",
-        "IMG_20260927_110427.jpg",
-        "IMG_20260927_110442.jpg",
-        "IMG_20260927_110454.jpg",
-        "IMG_20260927_110517.jpg",
-        "IMG_20260927_110543.jpg",
-        "IMG_20260927_110645.jpg",
-        "IMG_20260927_110715.jpg",
-        "IMG_20260927_110731.jpg",
-        "IMG_20260927_110744.jpg",
-        "IMG_20260927_110941.jpg",
-        "IMG_20260927_110943.jpg",
-        "IMG_20260927_112553.jpg",
-        "IMG_20260927_121227.jpg",
-        "IMG_20260927_121314.jpg",
-        "IMG_20260927_121341.jpg",
-        "IMG_20260927_121406.jpg",
-        "IMG_20260927_121415.jpg",
-        "IMG_20260927_121501.jpg",
-        "IMG_20260927_121510.jpg",
-        "IMG_20260927_121620.jpg",
-        "IMG_20260927_121639.jpg",
-        "IMG_20260927_121641.jpg",
-        "IMG_20260927_121646_1(1).jpg",
-        "IMG_20260927_121646_1.jpg",
-        "IMG_20260927_121709.jpg",
-        "IMG_20260927_121849.jpg",
-        "IMG_20260927_121927_1.jpg",
-        "IMG_20260927_121939.jpg",
-        "IMG_20260927_122007.jpg",
-        "IMG_20260927_122315.jpg",
-        "IMG_20260927_122319.jpg"
-    ];
+    const initialPhotoNames =
+        Array.from(
+            { length: 58 },
+            (_, index) => `romeo80anos-${index + 1}.jpg`
+        );
 
     let photos =
         initialPhotoNames.map(
@@ -1278,9 +1246,12 @@
                 id,
                 file: null,
                 name,
-                url: name
+                url: name.replace(/\.jpe?g$/i, ".webp"),
+                originalUrl: name
             })
         );
+
+    let bannerPhotos = [];
 
     let currentSlide = 0;
 
@@ -1291,6 +1262,62 @@
     let selectedPhotos = new Set();
 
     let objectUrls = [];
+
+
+    function shufflePhotos(photoList) {
+
+        const shuffled = [...photoList];
+
+        for (let index = shuffled.length - 1; index > 0; index--) {
+
+            const randomIndex =
+                Math.floor(Math.random() * (index + 1));
+
+            [shuffled[index], shuffled[randomIndex]] =
+                [shuffled[randomIndex], shuffled[index]];
+
+        }
+
+        return shuffled;
+
+    }
+
+
+    async function createWebpUrl(file) {
+
+        const bitmap =
+            await createImageBitmap(file);
+
+        const scale =
+            Math.min(1, 2560 / Math.max(bitmap.width, bitmap.height));
+
+        const canvas =
+            document.createElement("canvas");
+
+        canvas.width =
+            Math.max(1, Math.round(bitmap.width * scale));
+
+        canvas.height =
+            Math.max(1, Math.round(bitmap.height * scale));
+
+        canvas
+            .getContext("2d")
+            .drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+        bitmap.close();
+
+        const webpBlob =
+            await new Promise(resolve =>
+                canvas.toBlob(resolve, "image/webp", 0.82)
+            );
+
+        if (!webpBlob || webpBlob.type !== "image/webp") {
+            throw new Error("O navegador não conseguiu gerar uma imagem WebP.");
+        }
+
+        return URL.createObjectURL(webpBlob);
+
+    }
 
 
     /*
@@ -1350,7 +1377,7 @@
 
     folderInput.addEventListener(
         "change",
-        function(event) {
+        async function(event) {
 
             const files =
                 Array.from(event.target.files);
@@ -1376,7 +1403,25 @@
 
                 });
 
-            if (!imageFiles.length) {
+            const sourceImageFiles =
+                imageFiles.filter(file => {
+
+                    if (!file.name.toLowerCase().endsWith(".webp")) {
+                        return true;
+                    }
+
+                    const baseName =
+                        file.name.replace(/\.webp$/i, "").toLowerCase();
+
+                    return !imageFiles.some(candidate =>
+                        candidate !== file &&
+                        !candidate.name.toLowerCase().endsWith(".webp") &&
+                        candidate.name.replace(/\.[^.]+$/, "").toLowerCase() === baseName
+                    );
+
+                });
+
+            if (!sourceImageFiles.length) {
 
                 showToast(
                     "Nenhuma imagem encontrada na pasta."
@@ -1391,7 +1436,7 @@
             Ordena pelo nome do arquivo
             */
 
-            imageFiles.sort(
+            sourceImageFiles.sort(
                 (a, b) =>
                     a.name.localeCompare(
                         b.name,
@@ -1419,24 +1464,57 @@
             Monta estrutura das fotos
             */
 
-            photos =
-                imageFiles.map(
-                    (file, index) => {
+            try {
 
-                        const url =
-                            URL.createObjectURL(file);
+                photos =
+                    await Promise.all(
+                        sourceImageFiles.map(
+                            async (file, index) => {
 
-                        objectUrls.push(url);
+                                const originalUrl =
+                                    URL.createObjectURL(file);
 
-                        return {
-                            id: index,
-                            file: file,
-                            name: file.name,
-                            url: url
-                        };
+                                objectUrls.push(originalUrl);
 
-                    }
+                                const url =
+                                    file.type.toLowerCase() === "image/webp"
+                                        ? originalUrl
+                                        : await createWebpUrl(file);
+
+                                if (url !== originalUrl) {
+                                    objectUrls.push(url);
+                                }
+
+                                return {
+                                    id: index,
+                                    file: file,
+                                    name: file.name,
+                                    url: url,
+                                    originalUrl: originalUrl
+                                };
+
+                            }
+                        )
+                    );
+
+            } catch (error) {
+
+                console.error(error);
+
+                objectUrls.forEach(url => URL.revokeObjectURL(url));
+
+                objectUrls = [];
+
+                showToast(
+                    "Não foi possível preparar as versões WebP das imagens."
                 );
+
+                return;
+
+            }
+
+            bannerPhotos =
+                shufflePhotos(photos);
 
 
             selectedPhotos.clear();
@@ -1484,14 +1562,14 @@
 
         slides.innerHTML = "";
 
-        if (!photos.length) {
+        if (!bannerPhotos.length) {
 
             return;
 
         }
 
 
-        photos.forEach(
+        bannerPhotos.forEach(
             (photo, index) => {
 
                 const slide =
@@ -1522,15 +1600,15 @@
 
     function showSlide(index) {
 
-        if (!photos.length) {
+        if (!bannerPhotos.length) {
             return;
         }
 
         if (index < 0) {
-            index = photos.length - 1;
+            index = bannerPhotos.length - 1;
         }
 
-        if (index >= photos.length) {
+        if (index >= bannerPhotos.length) {
             index = 0;
         }
 
@@ -1604,7 +1682,7 @@
 
         clearInterval(slideshowTimer);
 
-        if (photos.length <= 1) {
+        if (bannerPhotos.length <= 1) {
             return;
         }
 
@@ -1640,7 +1718,7 @@
 
         thumbnailTrack.innerHTML = "";
 
-        photos.forEach(
+        bannerPhotos.forEach(
             (photo, index) => {
 
                 const thumb =
@@ -1913,7 +1991,7 @@
         const link =
             document.createElement("a");
 
-        link.href = photo.url;
+        link.href = photo.originalUrl || photo.url;
 
         link.download =
             photo.name;
@@ -2005,7 +2083,7 @@
 
                 const fileContent =
                     photo.file ||
-                    await fetch(photo.url).then(response => {
+                        await fetch(photo.originalUrl || photo.url).then(response => {
 
                         if (!response.ok) {
                             throw new Error(`Falha ao carregar ${photo.name}`);
@@ -2133,7 +2211,7 @@
             `${lightboxIndex + 1} / ${photos.length} • ${photo.name}`;
 
         lightboxDownload.href =
-            photo.url;
+            photo.originalUrl || photo.url;
 
         lightboxDownload.download =
             photo.name;
@@ -2477,6 +2555,9 @@
     */
 
     function initialize() {
+
+        bannerPhotos =
+            shufflePhotos(photos);
 
         renderEverything();
 
